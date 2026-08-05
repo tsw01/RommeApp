@@ -1,0 +1,1952 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rommé Punktezähler</title>
+<style>
+  :root {
+    --team1: #3b82f6;
+    --team1-light: #dbeafe;
+    --team2: #ef4444;
+    --team2-light: #fee2e2;
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --winner: #bbf7d0;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── SETUP SCREEN ── */
+  #setup-screen {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 32px 16px;
+  }
+
+  .app-title {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  .app-subtitle {
+    text-align: center;
+    color: var(--text-muted);
+    margin-bottom: 32px;
+    font-size: 0.95rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    margin-bottom: 16px;
+  }
+
+  .card h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .player-inputs { display: grid; gap: 10px; }
+
+  .player-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .player-badge {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.85rem;
+    flex-shrink: 0; color: white;
+  }
+
+  .badge-1, .badge-3 { background: var(--team1); }
+  .badge-2, .badge-4 { background: var(--team2); }
+
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.15s;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  input[type="text"]:focus, input[type="number"]:focus {
+    border-color: var(--team1);
+  }
+
+  .team-options { display: grid; gap: 8px; }
+
+  .team-option {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+  }
+
+  .team-option:has(input:checked) {
+    border-color: var(--team1);
+    background: var(--team1-light);
+  }
+
+  .team-option input { display: none; }
+
+  .team-preview {
+    display: flex; gap: 6px; align-items: center; flex: 1;
+  }
+
+  .team-chip {
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 0.8rem; font-weight: 600; color: white;
+  }
+
+  .chip-t1 { background: var(--team1); }
+  .chip-t2 { background: var(--team2); }
+
+  .team-vs { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
+
+  .btn {
+    display: block; width: 100%; padding: 14px;
+    border: none; border-radius: 10px;
+    font-size: 1rem; font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--team1); color: white; }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-secondary { background: var(--bg); color: var(--text); border: 1.5px solid var(--border); }
+
+  /* ── GAME SCREEN ── */
+  #game-screen { padding: 0 0 120px; }
+
+  .game-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+
+  .game-header h1 { font-size: 1.2rem; font-weight: 700; }
+
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+
+  .rounds-badge {
+    font-size: 0.8rem; color: var(--text-muted);
+    background: var(--bg); padding: 4px 10px; border-radius: 20px;
+  }
+
+  .icon-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 1.2rem; padding: 4px; border-radius: 6px;
+    color: var(--text-muted);
+    transition: background 0.15s;
+  }
+
+  .icon-btn:hover { background: var(--bg); }
+
+  /* Team summary bar */
+  .team-bar {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; padding: 12px 16px;
+  }
+
+  .team-card { border-radius: 10px; padding: 12px 14px; }
+  .team-card.t1 { background: var(--team1-light); border: 1.5px solid var(--team1); }
+  .team-card.t2 { background: var(--team2-light); border: 1.5px solid var(--team2); }
+
+  .team-card .team-name {
+    font-size: 0.75rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;
+  }
+
+  .team-card.t1 .team-name { color: var(--team1); }
+  .team-card.t2 .team-name { color: var(--team2); }
+
+  .team-card .team-pts {
+    font-size: 1rem; font-weight: 600; line-height: 1; color: var(--text-muted);
+  }
+
+  .team-card .team-euro {
+    font-size: 1.6rem; font-weight: 800; color: var(--text); margin-top: 2px;
+  }
+
+  /* Score table */
+  .table-wrapper { overflow-x: auto; padding: 0 16px; }
+
+  table { width: 100%; border-collapse: collapse; min-width: 360px; }
+
+  thead th {
+    padding: 10px 8px;
+    font-size: 0.78rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    border-bottom: 2px solid var(--border);
+    text-align: center; white-space: nowrap;
+  }
+
+  thead th:first-child { text-align: left; color: var(--text-muted); }
+  th.col-t1 { color: var(--team1); }
+  th.col-t2 { color: var(--team2); }
+
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:hover { background: var(--bg); }
+
+  td { padding: 9px 8px; text-align: center; font-size: 0.95rem; }
+
+  td:first-child {
+    text-align: left; font-size: 0.82rem;
+    font-weight: 600; color: var(--text-muted); width: 56px;
+  }
+
+  td.winner-cell { background: var(--winner); font-weight: 700; }
+
+  .romme-badge {
+    font-size: 0.65rem; background: #7c3aed; color: white;
+    border-radius: 4px; padding: 1px 4px;
+    display: inline-block; vertical-align: super;
+  }
+
+  tfoot td {
+    padding: 10px 8px; font-weight: 800; font-size: 1rem;
+    border-top: 2px solid var(--border); background: var(--surface);
+  }
+
+  tfoot td:first-child { font-size: 0.82rem; color: var(--text-muted); }
+  tfoot td.col-t1 { color: var(--team1); }
+  tfoot td.col-t2 { color: var(--team2); }
+
+  /* Sync indicator */
+  .sync-bar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 16px; font-size: 0.75rem; color: var(--text-muted);
+    min-height: 28px;
+  }
+
+  .sync-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #94a3b8; flex-shrink: 0;
+  }
+
+  .sync-dot.ok { background: #22c55e; }
+  .sync-dot.err { background: var(--team2); }
+  .sync-dot.busy { background: #f59e0b; animation: pulse 1s infinite; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* FAB */
+  .fab-container {
+    position: fixed; bottom: 24px;
+    left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 448px;
+  }
+
+  .fab {
+    width: 100%; padding: 16px;
+    background: var(--team1); color: white;
+    border: none; border-radius: 14px;
+    font-size: 1rem; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(59,130,246,0.4);
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .fab:active { transform: scale(0.98); }
+  .fab:hover { opacity: 0.9; }
+  .fab:disabled { background: #94a3b8; box-shadow: none; cursor: default; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 100;
+    align-items: flex-end; justify-content: center;
+    cursor: pointer;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px 32px;
+    width: 100%; max-width: 480px;
+    max-height: 90vh; overflow-y: auto;
+    animation: slideUp 0.25s ease;
+    cursor: default;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(40px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal-title {
+    font-size: 1.1rem; font-weight: 700;
+    margin-bottom: 20px; text-align: center;
+  }
+
+  .winner-selector {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; margin-bottom: 20px;
+  }
+
+  .winner-btn {
+    padding: 10px 8px; border: 2px solid var(--border);
+    border-radius: 10px; background: var(--surface);
+    font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    transition: all 0.15s; color: var(--text); text-align: center;
+  }
+
+  .winner-btn.selected-t1 { border-color: #16a34a; background: #16a34a; color: white; }
+  .winner-btn.selected-t2 { border-color: #16a34a; background: #16a34a; color: white; }
+
+  .romme-hand-toggle {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    background: #f5f3ff; border: 1.5px solid #7c3aed;
+    border-radius: 10px; margin-bottom: 20px;
+    cursor: pointer; user-select: none;
+  }
+
+  .toggle-switch {
+    width: 40px; height: 22px; background: #cbd5e1;
+    border-radius: 11px; position: relative;
+    flex-shrink: 0; transition: background 0.2s;
+  }
+
+  .toggle-switch::after {
+    content: ''; position: absolute;
+    width: 18px; height: 18px; background: white;
+    border-radius: 50%; top: 2px; left: 2px;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+
+  .romme-hand-toggle.active .toggle-switch { background: #7c3aed; }
+  .romme-hand-toggle.active .toggle-switch::after { transform: translateX(18px); }
+
+  .romme-hand-label strong { display: block; font-size: 0.95rem; color: #7c3aed; }
+  .romme-hand-label span { font-size: 0.78rem; color: var(--text-muted); }
+
+  .points-grid { display: grid; gap: 10px; margin-bottom: 20px; }
+
+  .points-row { display: flex; align-items: center; gap: 12px; }
+
+  .points-row label { flex: 1; font-size: 0.9rem; font-weight: 600; color: var(--text); }
+
+  .points-row .winner-label { flex: 1; font-size: 0.9rem; color: #16a34a; font-weight: 700; }
+
+  .points-row input[type="number"] { width: 90px; flex-shrink: 0; text-align: center; }
+
+  .points-row input[type="number"]:disabled {
+    background: var(--winner); border-color: var(--winner);
+    color: #16a34a; font-weight: 700;
+  }
+
+  .doubled-hint { font-size: 0.75rem; color: #7c3aed; text-align: right; flex-shrink: 0; width: 90px; }
+
+  .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .btn-cancel { background: var(--bg); color: var(--text); border: 1.5px solid var(--border); }
+
+  /* ── RESULT SCREEN ── */
+  #result-screen {
+    max-width: 480px; margin: 0 auto;
+    padding: 32px 16px; text-align: center;
+  }
+
+  .trophy { font-size: 4rem; margin-bottom: 16px; }
+  .result-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 8px; }
+  .result-subtitle { color: var(--text-muted); margin-bottom: 32px; }
+
+  .result-cards { display: grid; gap: 12px; margin-bottom: 24px; }
+
+  .result-team-card { border-radius: 14px; padding: 20px; text-align: left; }
+  .result-team-card.t1 { background: var(--team1-light); border: 2px solid var(--team1); }
+  .result-team-card.t2 { background: var(--team2-light); border: 2px solid var(--team2); }
+
+  .result-team-name {
+    font-size: 0.8rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;
+  }
+
+  .result-team-card.t1 .result-team-name { color: var(--team1); }
+  .result-team-card.t2 .result-team-name { color: var(--team2); }
+
+  .result-team-pts { font-size: 2rem; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+
+  .result-team-euro { font-size: 1.1rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; }
+
+  .result-team-players { font-size: 0.85rem; color: var(--text-muted); }
+
+  .kasse-msg {
+    background: #fef9c3; border: 1.5px solid #eab308;
+    border-radius: 10px; padding: 14px 16px;
+    font-size: 0.9rem; color: #713f12;
+    text-align: left; margin-bottom: 24px; line-height: 1.5;
+  }
+
+  /* ── DETAIL SCREEN ── */
+  #detail-screen {
+    max-width: 480px; margin: 0 auto; padding: 0 0 32px;
+  }
+
+  .detail-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; z-index: 10;
+  }
+
+  .detail-header h1 { font-size: 1.1rem; font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .detail-body { padding: 12px 16px; display: grid; gap: 12px; }
+
+  .liga-tab {
+    padding: 7px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    background: var(--surface);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+
+  .liga-tab.active {
+    background: var(--team1);
+    border-color: var(--team1);
+    color: white;
+  }
+
+  /* ── HISTORY SCREEN ── */
+  #history-screen {
+    max-width: 480px; margin: 0 auto; padding: 0 0 32px;
+  }
+
+  .history-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; z-index: 10;
+  }
+
+  .back-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 1.1rem; color: var(--text-muted); padding: 4px;
+  }
+
+  .history-header h1 { font-size: 1.2rem; font-weight: 700; }
+
+  .history-list { padding: 12px 16px; display: grid; gap: 12px; }
+
+  .history-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    cursor: pointer;
+    transition: box-shadow 0.15s;
+  }
+
+  .history-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+  .history-card-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 10px;
+  }
+
+  .history-date { font-size: 0.78rem; color: var(--text-muted); }
+
+  .history-status {
+    font-size: 0.72rem; font-weight: 700; padding: 2px 8px;
+    border-radius: 20px; text-transform: uppercase;
+  }
+
+  .status-running { background: #fef9c3; color: #854d0e; }
+  .status-finished { background: #dcfce7; color: #166534; }
+
+  .history-teams {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+
+  .history-team {
+    border-radius: 8px; padding: 8px 10px;
+  }
+
+  .history-team.t1 { background: var(--team1-light); }
+  .history-team.t2 { background: var(--team2-light); }
+
+  .history-team-name {
+    font-size: 0.72rem; font-weight: 700; margin-bottom: 2px;
+  }
+
+  .history-team.t1 .history-team-name { color: var(--team1); }
+  .history-team.t2 .history-team-name { color: var(--team2); }
+
+  .history-team-score { font-size: 1rem; font-weight: 800; }
+  .history-team-euro { font-size: 0.78rem; color: var(--text-muted); }
+
+  .history-rounds { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }
+
+  .empty-state {
+    text-align: center; padding: 48px 16px;
+    color: var(--text-muted); font-size: 0.95rem;
+  }
+
+  .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+
+  .loading-state {
+    text-align: center; padding: 32px;
+    color: var(--text-muted); font-size: 0.9rem;
+  }
+
+  @media (min-width: 600px) {
+    #game-screen { max-width: 640px; margin: 0 auto; }
+    .team-bar { gap: 12px; }
+    .modal { border-radius: 16px; margin-bottom: 24px; }
+  }
+
+  /* ── LOGIN SCREEN ── */
+  #login-screen {
+    display: none;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  #login-screen.active { display: flex; }
+
+  .login-box {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 36px 28px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    width: 100%; max-width: 380px;
+    text-align: center;
+  }
+
+  .login-title {
+    font-size: 1.8rem; font-weight: 800; margin-bottom: 4px;
+  }
+
+  .login-subtitle {
+    font-size: 0.9rem; color: var(--text-muted); margin-bottom: 28px;
+  }
+
+  .login-field { margin-bottom: 14px; text-align: left; }
+
+  .login-field label {
+    display: block; font-size: 0.8rem; font-weight: 600;
+    color: var(--text-muted); margin-bottom: 5px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+
+  .login-error {
+    background: #fee2e2; color: #b91c1c;
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 0.88rem; margin-bottom: 14px;
+    display: none;
+  }
+  .login-error.visible { display: block; }
+
+  .login-liga-options { display: grid; gap: 8px; margin-bottom: 20px; }
+
+  .login-liga-option {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+    text-align: left;
+  }
+
+  .login-liga-option:has(input:checked) {
+    border-color: var(--team1);
+    background: var(--team1-light);
+  }
+
+  .login-liga-option input { display: none; }
+
+  .login-liga-name { font-weight: 700; font-size: 0.9rem; display: block; }
+  .login-liga-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; display: block; }
+
+  .login-section-label {
+    font-size: 0.8rem; font-weight: 600;
+    color: var(--text-muted); margin-bottom: 8px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    text-align: left;
+  }
+
+  .logout-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 1.1rem; padding: 4px; border-radius: 6px;
+    color: var(--text-muted); transition: background 0.15s;
+  }
+  .logout-btn:hover { background: var(--bg); }
+
+  .login-forgot {
+    margin-top: 12px; font-size: 0.85rem;
+    color: var(--team1); background: none; border: none;
+    cursor: pointer; text-decoration: underline; padding: 0;
+  }
+
+  .login-success {
+    background: #dcfce7; color: #166534;
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 0.88rem; margin-bottom: 14px;
+    display: none;
+  }
+  .login-success.visible { display: block; }
+
+  .pw-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 200;
+    align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .pw-modal-overlay.open { display: flex; }
+
+  .pw-modal {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    width: 100%; max-width: 360px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  }
+
+  .pw-modal h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; }
+
+  .pw-modal .login-field { margin-bottom: 14px; }
+
+  .pw-error {
+    background: #fee2e2; color: #b91c1c;
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 0.88rem; margin-bottom: 14px;
+    display: none;
+  }
+  .pw-error.visible { display: block; }
+
+  .pw-success {
+    background: #dcfce7; color: #166534;
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 0.88rem; margin-bottom: 14px;
+    display: none;
+  }
+  .pw-success.visible { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN SCREEN ── -->
+<div id="login-screen" class="screen active">
+  <div class="login-box">
+    <div class="login-title">🃏 Rommé</div>
+    <div class="login-subtitle">Bitte anmelden</div>
+    <div class="login-success" id="login-success"></div>
+    <div class="login-error" id="login-error"></div>
+    <div id="login-form">
+      <div class="login-section-label">Liga</div>
+      <div class="login-liga-options">
+        <label class="login-liga-option">
+          <input type="radio" name="login-liga" value="Walter-Liga" checked>
+          <div>
+            <span class="login-liga-name">Walter-Liga</span>
+            <span class="login-liga-desc">Thomas &amp; Silke vs Eric &amp; Claudia · 12 Runden</span>
+          </div>
+        </label>
+        <label class="login-liga-option">
+          <input type="radio" name="login-liga" value="Gabelmann-Liga">
+          <div>
+            <span class="login-liga-name">Gabelmann-Liga</span>
+            <span class="login-liga-desc">Thomas S. &amp; Silke vs Thomas G. &amp; Gudrun · 10 Runden</span>
+          </div>
+        </label>
+      </div>
+      <div class="login-field">
+        <label for="login-email">E-Mail</label>
+        <input type="text" id="login-email" autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="login-field">
+        <label for="login-password">Passwort</label>
+        <input type="password" id="login-password" autocomplete="current-password" onkeydown="if(event.key==='Enter') doLogin()">
+      </div>
+      <button class="btn btn-primary" onclick="doLogin()" id="login-btn">Anmelden</button>
+      <div style="text-align:center;margin-top:12px">
+        <button class="login-forgot" onclick="showForgotForm()">Passwort vergessen?</button>
+      </div>
+    </div>
+    <div id="forgot-form" style="display:none">
+      <div class="login-field">
+        <label for="forgot-email">E-Mail</label>
+        <input type="text" id="forgot-email" autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter') doForgotPassword()">
+      </div>
+      <button class="btn btn-primary" onclick="doForgotPassword()" id="forgot-btn">Reset-Link senden</button>
+      <div style="text-align:center;margin-top:12px">
+        <button class="login-forgot" onclick="showLoginForm()">Zurück zur Anmeldung</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SETUP SCREEN ── -->
+<div id="setup-screen" class="screen">
+  <h1 class="app-title">Rommé</h1>
+  <p class="app-subtitle">Punktezähler · 4 Spieler · 2 Teams</p>
+
+  <div class="card">
+    <h2>Angemeldet als</h2>
+    <div id="setup-user-info" style="font-size:0.95rem;padding:4px 0">
+      <span id="setup-user-email" style="font-weight:700"></span>
+      <span id="setup-user-role" style="margin-left:8px;font-size:0.78rem;font-weight:700;padding:2px 8px;border-radius:20px"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Liga</h2>
+    <div id="setup-liga-display" style="font-weight:700;font-size:1rem;padding:4px 0"></div>
+    <div class="team-options" id="setup-liga-options" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <h2>Spielname</h2>
+    <input type="text" id="game-name" maxlength="50" autocomplete="off" autocorrect="off">
+  </div>
+
+  <div class="card">
+    <h2>Anzahl Runden</h2>
+    <input type="number" id="num-rounds" min="1" max="99" autocomplete="off" style="width:100px">
+  </div>
+
+  <button class="btn btn-primary" onclick="startGame()" style="margin-bottom:10px">Spiel starten</button>
+  <button class="btn btn-secondary" onclick="showHistory()" style="margin-bottom:10px">📋 Spielhistorie</button>
+  <button class="btn btn-secondary" onclick="showChangePassword()" style="margin-bottom:10px">🔑 Passwort ändern</button>
+  <button class="btn btn-secondary" onclick="doLogout()">🚪 Abmelden</button>
+</div>
+
+<!-- ── GAME SCREEN ── -->
+<div id="game-screen" class="screen">
+  <div class="game-header">
+    <h1 id="game-title">Rommé</h1>
+    <div class="header-actions">
+      <span class="rounds-badge" id="rounds-badge">Runde 0 / 12</span>
+      <button class="icon-btn" onclick="changeRounds()" title="Rundenanzahl ändern">✏️</button>
+      <button class="icon-btn" onclick="cancelGame()" title="Spiel abbrechen">✖️</button>
+      <button class="icon-btn" onclick="showHistory()" title="Historie">📋</button>
+      <button class="logout-btn" onclick="doLogout()" title="Abmelden">🚪</button>
+    </div>
+  </div>
+
+  <div class="sync-bar">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span id="sync-text">Nicht verbunden</span>
+  </div>
+
+  <div class="team-bar">
+    <div class="team-card t1">
+      <div class="team-name" id="team1-name">Team 1</div>
+      <div class="team-pts" id="team1-pts">0</div>
+      <div class="team-euro" id="team1-euro">0 €</div>
+    </div>
+    <div class="team-card t2">
+      <div class="team-name" id="team2-name">Team 2</div>
+      <div class="team-pts" id="team2-pts">0</div>
+      <div class="team-euro" id="team2-euro">0 €</div>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table>
+      <thead id="score-head"></thead>
+      <tbody id="score-body"></tbody>
+      <tfoot id="score-foot"></tfoot>
+    </table>
+  </div>
+
+  <div class="fab-container">
+    <button class="fab" id="fab-btn" onclick="openModal()">+ Runde eingeben</button>
+  </div>
+</div>
+
+<!-- ── RESULT SCREEN ── -->
+<div id="result-screen" class="screen">
+  <div style="max-width:480px;margin:0 auto;padding:32px 16px;text-align:center">
+    <div class="trophy">🏆</div>
+    <h1 class="result-title">Spiel beendet!</h1>
+    <p class="result-subtitle" id="result-subtitle">Endabrechnung nach 12 Runden</p>
+    <div class="result-cards" id="result-cards"></div>
+    <div class="kasse-msg" id="kasse-msg"></div>
+    <button class="btn btn-primary" onclick="newGame()" style="margin-bottom:10px">Neues Spiel</button>
+    <button class="btn btn-secondary" onclick="showHistory()">📋 Spielhistorie</button>
+  </div>
+</div>
+
+<!-- ── DETAIL SCREEN ── -->
+<div id="detail-screen" class="screen">
+  <div class="detail-header">
+    <button class="back-btn" onclick="showScreen('history-screen')">← </button>
+    <h1 id="detail-title"></h1>
+    <span class="history-status" id="detail-status"></span>
+  </div>
+  <div class="detail-body" id="detail-body">
+    <div class="loading-state">Lade Details…</div>
+  </div>
+</div>
+
+<!-- ── HISTORY SCREEN ── -->
+<div id="history-screen" class="screen">
+  <div class="history-header">
+    <button class="back-btn" onclick="goBack()">← </button>
+    <h1>Spielhistorie</h1>
+    <span id="history-liga-badge" style="font-size:0.75rem;font-weight:600;color:var(--text-muted);background:var(--bg);padding:4px 10px;border-radius:20px;white-space:nowrap"></span>
+  </div>
+  <div id="liga-tabs" style="display:none;gap:8px;padding:12px 16px 0"></div>
+  <div id="history-summary"></div>
+  <div class="history-list" id="history-list">
+    <div class="loading-state">Lade Spiele…</div>
+  </div>
+</div>
+
+<!-- ── MODAL ── -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Runde 1 eingeben</div>
+    <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">Gewinner auswählen</div>
+    <div class="winner-selector" id="winner-selector"></div>
+    <div class="romme-hand-toggle" id="romme-toggle" onclick="toggleRommeHand()">
+      <div class="toggle-switch"></div>
+      <div class="romme-hand-label">
+        <strong>Rommé Hand</strong>
+        <span>Strafpunkte der Verlierer werden verdoppelt</span>
+      </div>
+    </div>
+    <div class="points-grid" id="points-grid"></div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="btn btn-primary" onclick="submitRound()">Bestätigen</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PASSWORT ÄNDERN MODAL ── -->
+<div class="pw-modal-overlay" id="pw-modal-overlay">
+  <div class="pw-modal">
+    <h2>🔑 Passwort ändern</h2>
+    <div class="pw-error" id="pw-error"></div>
+    <div class="pw-success" id="pw-success"></div>
+    <div class="login-field">
+      <label for="pw-current">Aktuelles Passwort</label>
+      <input type="password" id="pw-current" autocomplete="current-password">
+    </div>
+    <div class="login-field">
+      <label for="pw-new">Neues Passwort</label>
+      <input type="password" id="pw-new" autocomplete="new-password">
+    </div>
+    <div class="login-field">
+      <label for="pw-confirm">Neues Passwort bestätigen</label>
+      <input type="password" id="pw-confirm" autocomplete="new-password" onkeydown="if(event.key==='Enter') doChangePassword()">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeChangePassword()">Abbrechen</button>
+      <button class="btn btn-primary" onclick="doChangePassword()" id="pw-btn">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── SUPABASE ──
+const SUPABASE_URL = 'https://xwdrzusokqxleenbymay.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_87MKlQYAIik-_78IqZ5QLw_YX41VZY4';
+
+// ── AUTH ──
+let authToken = null;
+let userLigaAccess = [];
+// Format: [{ liga: 'Walter-Liga', role: 'write' }, ...]
+// Persistiert in sessionStorage unter 'romme_liga_access'
+
+function getLigaRole(liga) {
+  return userLigaAccess.find(e => e.liga === liga)?.role ?? null;
+}
+function isWritable(liga) {
+  return getLigaRole(liga) === 'write';
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const selectedLiga = document.querySelector('input[name="login-liga"]:checked').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
+  errEl.classList.remove('visible');
+  btn.textContent = '…';
+  btn.disabled = true;
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error_description || data.message || 'Anmeldung fehlgeschlagen');
+    authToken = data.access_token;
+    sessionStorage.setItem('romme_token', authToken);
+
+    const access = await loadUserLigaAccess();
+    if (access.length === 0) throw new Error('Kein Liga-Zugriff. Bitte Administrator kontaktieren.');
+
+    const hasAccess = access.find(e => e.liga === selectedLiga);
+    if (!hasAccess) throw new Error(`Kein Zugriff auf die ${selectedLiga}. Bitte Administrator kontaktieren.`);
+
+    // Nur die gewählte Liga in die Session übernehmen
+    userLigaAccess = [hasAccess];
+    sessionStorage.setItem('romme_liga_access', JSON.stringify(userLigaAccess));
+    sessionStorage.setItem('romme_liga', selectedLiga);
+
+    showScreen('setup-screen');
+    initSetup();
+  } catch (e) {
+    authToken = null;
+    sessionStorage.removeItem('romme_token');
+    errEl.textContent = e.message;
+    errEl.classList.add('visible');
+  } finally {
+    btn.textContent = 'Anmelden';
+    btn.disabled = false;
+  }
+}
+
+function doLogout() {
+  authToken = null;
+  userLigaAccess = [];
+  sessionStorage.removeItem('romme_token');
+  sessionStorage.removeItem('romme_liga');
+  sessionStorage.removeItem('romme_liga_access');
+  showScreen('login-screen');
+  document.getElementById('login-password').value = '';
+}
+
+async function loadUserLigaAccess() {
+  const data = await sbFetch('user_liga_access?select=liga,role&order=liga.asc', { method: 'GET', prefer: '' });
+  return data || [];
+}
+
+async function checkAuth() {
+  const token = sessionStorage.getItem('romme_token');
+  if (!token) { showScreen('login-screen'); return; }
+  const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token },
+  });
+  if (res.ok) {
+    authToken = token;
+    const saved = sessionStorage.getItem('romme_liga_access');
+    if (saved) {
+      userLigaAccess = JSON.parse(saved);
+    } else {
+      userLigaAccess = await loadUserLigaAccess();
+      if (userLigaAccess.length === 0) {
+        sessionStorage.removeItem('romme_token');
+        showScreen('login-screen');
+        return;
+      }
+      sessionStorage.setItem('romme_liga_access', JSON.stringify(userLigaAccess));
+    }
+    const currentLiga = sessionStorage.getItem('romme_liga');
+    if (!currentLiga || !userLigaAccess.find(e => e.liga === currentLiga)) {
+      sessionStorage.setItem('romme_liga', userLigaAccess[0].liga);
+    }
+    showScreen('setup-screen');
+    initSetup();
+  } else {
+    sessionStorage.removeItem('romme_token');
+    sessionStorage.removeItem('romme_liga');
+    sessionStorage.removeItem('romme_liga_access');
+    showScreen('login-screen');
+  }
+}
+
+async function sbFetch(path, options = {}) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    ...options,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + (authToken || SUPABASE_KEY),
+      'Content-Type': 'application/json',
+      'Prefer': options.prefer || 'return=representation',
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// ── STATE ──
+let state = {
+  players: ['', '', '', ''],
+  teams: [[0, 2], [1, 3]],
+  rounds: [],
+  currentRound: 0,
+  totalRounds: 12,
+  gameId: null,
+  liga: 'Walter-Liga',
+};
+
+let editingRound = null; // null = neue Runde, sonst 0-basierter Index
+let prevScreen = 'setup-screen';
+let modalWinner = null;
+let rommeHand = false;
+
+const LIGA_CONFIG = {
+  'Walter-Liga':   { players: ['Thomas', 'Silke', 'Eric', 'Claudia'], teams: [[0,1],[2,3]], rounds: 12 },
+  'Gabelmann-Liga': { players: ['Thomas S.', 'Silke', 'Thomas G.', 'Gudrun'], teams: [[0,1],[2,3]], rounds: 10 },
+};
+
+const TEAM_COMBOS = [
+  [[0, 2], [1, 3]],
+  [[0, 1], [2, 3]],
+  [[0, 3], [1, 2]],
+];
+
+// ── SYNC UI ──
+function setSyncStatus(status, text) {
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-text');
+  dot.className = 'sync-dot ' + status;
+  label.textContent = text;
+}
+
+// ── SETUP ──
+function defaultGameName() {
+  const d = new Date();
+  const ymd = d.getFullYear().toString()
+    + String(d.getMonth() + 1).padStart(2, '0')
+    + String(d.getDate()).padStart(2, '0');
+  return ymd + ' Rommé';
+}
+
+function updateTeamPreviews() {} // nicht mehr benötigt, bleibt für Kompatibilität
+
+function initSetup() {
+  const liga = sessionStorage.getItem('romme_liga') || userLigaAccess[0]?.liga || 'Walter-Liga';
+  const cfg = LIGA_CONFIG[liga];
+
+  // User-Info anzeigen
+  const role = getLigaRole(liga);
+  const roleEl = document.getElementById('setup-user-role');
+  roleEl.textContent = role === 'write' ? 'Schreibzugriff' : 'Lesezugriff';
+  roleEl.style.background = role === 'write' ? '#dcfce7' : '#fef9c3';
+  roleEl.style.color = role === 'write' ? '#166534' : '#713f12';
+  getCurrentUserEmail().then(email => {
+    document.getElementById('setup-user-email').textContent = email;
+  }).catch(() => {});
+
+  if (userLigaAccess.length <= 1) {
+    document.getElementById('setup-liga-display').textContent =
+      liga + ' · ' + cfg.players.slice(0,2).join(' & ') + ' vs ' + cfg.players.slice(2,4).join(' & ');
+    document.getElementById('setup-liga-display').style.display = 'block';
+    document.getElementById('setup-liga-options').style.display = 'none';
+  } else {
+    document.getElementById('setup-liga-display').style.display = 'none';
+    document.getElementById('setup-liga-options').style.display = 'block';
+    renderSetupLigaOptions(liga);
+  }
+
+  document.getElementById('game-name').value = defaultGameName();
+  document.getElementById('num-rounds').value = cfg.rounds;
+  currentLigaFilter = liga;
+  applyReadonlyMode(liga);
+}
+
+function renderSetupLigaOptions(currentLiga) {
+  const container = document.getElementById('setup-liga-options');
+  container.innerHTML = userLigaAccess.map(({ liga }) => {
+    const cfg = LIGA_CONFIG[liga];
+    if (!cfg) return '';
+    const desc = cfg.players.slice(0,2).join(' & ') + ' vs ' + cfg.players.slice(2,4).join(' & ') + ' · ' + cfg.rounds + ' Runden';
+    return `<label class="team-option">
+      <input type="radio" name="liga" value="${liga}" ${liga === currentLiga ? 'checked' : ''} onchange="onLigaChange()">
+      <div style="flex:1">
+        <div style="font-weight:700">${liga}</div>
+        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">${desc}</div>
+      </div>
+    </label>`;
+  }).join('');
+}
+
+function onLigaChange() {
+  const liga = document.querySelector('input[name="liga"]:checked').value;
+  sessionStorage.setItem('romme_liga', liga);
+  document.getElementById('num-rounds').value = LIGA_CONFIG[liga].rounds;
+  applyReadonlyMode(liga);
+}
+
+checkAuth();
+
+function applyReadonlyMode(liga) {
+  const canWrite = isWritable(liga);
+  const startBtn = document.querySelector('#setup-screen .btn-primary');
+  if (startBtn) {
+    startBtn.disabled = !canWrite;
+    startBtn.title = canWrite ? '' : 'Nur Lesezugriff – Spiele starten nicht erlaubt';
+  }
+}
+
+// ── PASSWORT VERGESSEN ──
+function showForgotForm() {
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('forgot-form').style.display = 'block';
+  document.getElementById('login-error').classList.remove('visible');
+  document.getElementById('login-success').classList.remove('visible');
+  const email = document.getElementById('login-email').value;
+  document.getElementById('forgot-email').value = email;
+}
+
+function showLoginForm() {
+  document.getElementById('forgot-form').style.display = 'none';
+  document.getElementById('login-form').style.display = 'block';
+  document.getElementById('login-error').classList.remove('visible');
+  document.getElementById('login-success').classList.remove('visible');
+}
+
+async function doForgotPassword() {
+  const email = document.getElementById('forgot-email').value.trim();
+  const errEl = document.getElementById('login-error');
+  const successEl = document.getElementById('login-success');
+  const btn = document.getElementById('forgot-btn');
+  errEl.classList.remove('visible');
+  successEl.classList.remove('visible');
+  if (!email) {
+    errEl.textContent = 'Bitte E-Mail-Adresse eingeben.';
+    errEl.classList.add('visible');
+    return;
+  }
+  btn.textContent = '…';
+  btn.disabled = true;
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/recover', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error_description || data.message || 'Fehler beim Senden');
+    }
+    successEl.textContent = 'Reset-Link wurde an ' + email + ' gesendet. Bitte auch den Spam-Ordner prüfen.';
+    successEl.classList.add('visible');
+    showLoginForm();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.add('visible');
+  } finally {
+    btn.textContent = 'Reset-Link senden';
+    btn.disabled = false;
+  }
+}
+
+// ── PASSWORT ÄNDERN ──
+function showChangePassword() {
+  document.getElementById('pw-current').value = '';
+  document.getElementById('pw-new').value = '';
+  document.getElementById('pw-confirm').value = '';
+  document.getElementById('pw-error').classList.remove('visible');
+  document.getElementById('pw-success').classList.remove('visible');
+  document.getElementById('pw-modal-overlay').classList.add('open');
+}
+
+function closeChangePassword() {
+  document.getElementById('pw-modal-overlay').classList.remove('open');
+}
+
+async function doChangePassword() {
+  const current = document.getElementById('pw-current').value;
+  const newPw = document.getElementById('pw-new').value;
+  const confirm = document.getElementById('pw-confirm').value;
+  const errEl = document.getElementById('pw-error');
+  const successEl = document.getElementById('pw-success');
+  const btn = document.getElementById('pw-btn');
+  errEl.classList.remove('visible');
+  successEl.classList.remove('visible');
+
+  if (!current || !newPw || !confirm) {
+    errEl.textContent = 'Bitte alle Felder ausfüllen.';
+    errEl.classList.add('visible');
+    return;
+  }
+  if (newPw !== confirm) {
+    errEl.textContent = 'Die neuen Passwörter stimmen nicht überein.';
+    errEl.classList.add('visible');
+    return;
+  }
+  if (newPw.length < 6) {
+    errEl.textContent = 'Das neue Passwort muss mindestens 6 Zeichen lang sein.';
+    errEl.classList.add('visible');
+    return;
+  }
+
+  btn.textContent = '…';
+  btn.disabled = true;
+
+  try {
+    // Aktuelles Passwort prüfen via Re-Login
+    const email = await getCurrentUserEmail();
+    const checkRes = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: current }),
+    });
+    if (!checkRes.ok) {
+      throw new Error('Das aktuelle Passwort ist falsch.');
+    }
+
+    // Neues Passwort setzen
+    const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+      method: 'PUT',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + authToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password: newPw }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error_description || data.message || 'Fehler beim Ändern');
+    }
+    successEl.textContent = 'Passwort erfolgreich geändert.';
+    successEl.classList.add('visible');
+    document.getElementById('pw-current').value = '';
+    document.getElementById('pw-new').value = '';
+    document.getElementById('pw-confirm').value = '';
+    setTimeout(() => closeChangePassword(), 1500);
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.add('visible');
+  } finally {
+    btn.textContent = 'Speichern';
+    btn.disabled = false;
+  }
+}
+
+async function getCurrentUserEmail() {
+  const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken },
+  });
+  const data = await res.json();
+  return data.email;
+}
+
+async function startGame() {
+  const gameName = document.getElementById('game-name').value.trim() || defaultGameName();
+  const totalRounds = Math.max(1, parseInt(document.getElementById('num-rounds').value) || 12);
+  const liga = (userLigaAccess.length > 1
+    ? document.querySelector('input[name="liga"]:checked')?.value
+    : null) || sessionStorage.getItem('romme_liga') || userLigaAccess[0]?.liga;
+  const cfg = LIGA_CONFIG[liga];
+
+  if (!isWritable(liga)) {
+    alert('Kein Schreibzugriff auf diese Liga.');
+    return;
+  }
+
+  state.players = cfg.players;
+  state.teams = cfg.teams;
+  state.rounds = [];
+  state.currentRound = 0;
+  state.totalRounds = totalRounds;
+  state.gameId = null;
+  state.gameName = gameName;
+  state.liga = liga;
+
+  showScreen('game-screen');
+  renderGame();
+
+  // Spiel in Supabase anlegen
+  setSyncStatus('busy', 'Spiel wird gespeichert…');
+  try {
+    const rows = await sbFetch('games', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: gameName,
+        liga: liga,
+        players: state.players,
+        teams: state.teams,
+        total_rounds: totalRounds,
+        status: 'running',
+      }),
+    });
+    state.gameId = rows[0].id;
+    setSyncStatus('ok', 'Gespeichert · ID ' + state.gameId.slice(0, 8));
+  } catch (e) {
+    setSyncStatus('err', 'Fehler: ' + e.message);
+  }
+}
+
+// ── SCREENS ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+async function showHistory() {
+  prevScreen = document.querySelector('.screen.active')?.id || 'setup-screen';
+  currentLigaFilter = sessionStorage.getItem('romme_liga') || state.liga || userLigaAccess[0]?.liga || 'Walter-Liga';
+  renderHistoryLigaTabs();
+  showScreen('history-screen');
+  await loadHistory();
+}
+
+function renderHistoryLigaTabs() {
+  const tabsContainer = document.getElementById('liga-tabs');
+  if (userLigaAccess.length <= 1) {
+    tabsContainer.style.display = 'none';
+    return;
+  }
+  tabsContainer.style.display = 'flex';
+  tabsContainer.innerHTML = userLigaAccess.map(({ liga }) =>
+    `<button class="liga-tab ${liga === currentLigaFilter ? 'active' : ''}" onclick="switchLigaTab('${liga}')">${liga}</button>`
+  ).join('');
+}
+
+function goBack() {
+  showScreen(prevScreen);
+}
+
+// ── GAME RENDER ──
+function renderGame() {
+  const { players, teams, rounds, currentRound } = state;
+
+  document.getElementById('rounds-badge').textContent = `Runde ${currentRound} / ${state.totalRounds}`;
+  document.getElementById('game-title').textContent = state.gameName || 'Rommé';
+
+  const t1names = teams[0].map(i => players[i]).join(' + ');
+  const t2names = teams[1].map(i => players[i]).join(' + ');
+  document.getElementById('team1-name').textContent = t1names;
+  document.getElementById('team2-name').textContent = t2names;
+
+  const totals = [0, 0, 0, 0];
+  rounds.forEach(r => r.points.forEach((p, i) => totals[i] += p));
+
+  const t1total = teams[0].reduce((s, i) => s + totals[i], 0);
+  const t2total = teams[1].reduce((s, i) => s + totals[i], 0);
+
+  document.getElementById('team1-pts').textContent = t1total + ' Pkt.';
+  document.getElementById('team2-pts').textContent = t2total + ' Pkt.';
+  document.getElementById('team1-euro').textContent = fmtEuro(t1total);
+  document.getElementById('team2-euro').textContent = fmtEuro(t2total);
+
+  const order = [...teams[0], ...teams[1]];
+  const colClass = order.map(i => teams[0].includes(i) ? 'col-t1' : 'col-t2');
+
+  document.getElementById('score-head').innerHTML = `<tr>
+    <th></th>
+    ${order.map((i, ci) => `<th class="${colClass[ci]}">${players[i]}</th>`).join('')}
+  </tr>`;
+
+  const tbody = document.getElementById('score-body');
+  tbody.innerHTML = '';
+  for (let r = 0; r < state.totalRounds; r++) {
+    const tr = document.createElement('tr');
+    const played = r < rounds.length;
+    let roundLabel = `R${r + 1}`;
+    if (played && rounds[r].rommeHand) {
+      roundLabel = `R${r + 1} <span class="romme-badge">×2</span>`;
+    }
+    if (played && isWritable(state.liga)) {
+      tr.style.cursor = 'pointer';
+      tr.title = 'Klicken zum Bearbeiten';
+      tr.addEventListener('click', () => openEditModal(r));
+    }
+    tr.innerHTML = `<td>${roundLabel}</td>` + order.map((i, ci) => {
+      if (played) {
+        const pts = rounds[r].points[i];
+        const isWinner = rounds[r].winner === i;
+        return `<td class="${isWinner ? 'winner-cell' : colClass[ci]}">${isWinner ? '0 ✓' : pts}</td>`;
+      }
+      return `<td style="color:var(--border)">—</td>`;
+    }).join('');
+    tbody.appendChild(tr);
+  }
+
+  document.getElementById('score-foot').innerHTML = `<tr>
+    <td>Σ</td>
+    ${order.map((i, ci) => `<td class="${colClass[ci]}">${totals[i]}</td>`).join('')}
+  </tr>`;
+
+  const fab = document.getElementById('fab-btn');
+  const canWrite = isWritable(state.liga);
+
+  // Header-Buttons für Read-Only ausblenden
+  document.querySelector('button[onclick="changeRounds()"]').style.display = canWrite ? '' : 'none';
+  document.querySelector('button[onclick="cancelGame()"]').style.display = canWrite ? '' : 'none';
+
+  if (currentRound >= state.totalRounds) {
+    fab.disabled = true;
+    fab.textContent = 'Spiel beendet';
+    showResult();
+  } else if (!canWrite) {
+    fab.style.display = 'none';
+  } else {
+    fab.style.display = '';
+    fab.disabled = false;
+    fab.textContent = `+ Runde ${currentRound + 1} eingeben`;
+  }
+}
+
+function fmtEuro(pts) {
+  return Math.ceil(pts / 100).toLocaleString('de-DE') + ' €';
+}
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleString('de-DE', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+// ── MODAL ──
+function changeRounds() {
+  const current = state.totalRounds;
+  const input = prompt(
+    `Anzahl Runden ändern (aktuell: ${current}, bereits gespielt: ${state.currentRound}):`,
+    current
+  );
+  if (input === null) return;
+  const val = parseInt(input);
+  if (isNaN(val) || val < 1) return;
+  if (val < state.currentRound) {
+    alert(`Nicht möglich: Es wurden bereits ${state.currentRound} Runden gespielt.`);
+    return;
+  }
+  if (val === current) return;
+  state.totalRounds = val;
+  renderGame();
+
+  if (state.gameId) {
+    sbFetch(`games?id=eq.${state.gameId}`, {
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      body: JSON.stringify({ total_rounds: val }),
+    }).catch(e => setSyncStatus('err', 'Fehler: ' + e.message));
+  }
+}
+
+function openModal() {
+  editingRound = null;
+  modalWinner = null;
+  rommeHand = false;
+  document.getElementById('romme-toggle').classList.remove('active');
+  document.getElementById('points-grid').innerHTML = '';
+  document.getElementById('modal-title').textContent = `Runde ${state.currentRound + 1} eingeben`;
+
+  document.getElementById('winner-selector').innerHTML = state.players.map((name, i) =>
+    `<button class="winner-btn" data-idx="${i}" onclick="selectWinner(${i})">${name}</button>`
+  ).join('');
+
+  renderPointsGrid();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function openEditModal(roundIdx) {
+  const round = state.rounds[roundIdx];
+  editingRound = roundIdx;
+  modalWinner = round.winner;
+  rommeHand = round.rommeHand;
+
+  document.getElementById('romme-toggle').classList.toggle('active', rommeHand);
+  document.getElementById('points-grid').innerHTML = '';
+  document.getElementById('modal-title').textContent = `Runde ${roundIdx + 1} korrigieren`;
+
+  document.getElementById('winner-selector').innerHTML = state.players.map((name, i) => {
+    const btn = `<button class="winner-btn" data-idx="${i}" onclick="selectWinner(${i})">${name}</button>`;
+    return btn;
+  }).join('');
+
+  // Gewinner-Button vorauswählen
+  document.querySelectorAll('.winner-btn').forEach(b => {
+    if (parseInt(b.dataset.idx) === modalWinner) {
+      b.classList.add(state.teams[0].includes(modalWinner) ? 'selected-t1' : 'selected-t2');
+    }
+  });
+
+  // Originalpunkte (vor Verdopplung) für die Eingabefelder zurückrechnen
+  renderPointsGrid(round.points, round.rommeHand);
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function selectWinner(idx) {
+  modalWinner = idx;
+  document.querySelectorAll('.winner-btn').forEach(b => {
+    b.classList.remove('selected-t1', 'selected-t2');
+    if (parseInt(b.dataset.idx) === idx) {
+      b.classList.add(state.teams[0].includes(idx) ? 'selected-t1' : 'selected-t2');
+    }
+  });
+  renderPointsGrid();
+}
+
+function toggleRommeHand() {
+  rommeHand = !rommeHand;
+  document.getElementById('romme-toggle').classList.toggle('active', rommeHand);
+  renderPointsGrid();
+}
+
+function renderPointsGrid(existingPoints = null, existingRomme = false) {
+  const grid = document.getElementById('points-grid');
+  const saved = {};
+  state.players.forEach((_, i) => {
+    const el = document.getElementById('pts-' + i);
+    if (el) saved[i] = el.value;
+  });
+
+  grid.innerHTML = state.players.map((name, i) => {
+    if (modalWinner === i) {
+      return `<div class="points-row">
+        <span class="winner-label">🏆 ${name}</span>
+        <input type="number" value="0" disabled>
+      </div>`;
+    }
+    // Vorbelegung: gespeicherte DOM-Werte > übergebene Punkte (vor Verdopplung) > leer
+    let val = saved[i] ?? '';
+    if (val === '' && existingPoints != null) {
+      const raw = existingPoints[i];
+      val = existingRomme ? raw / 2 : raw;
+    }
+    return `<div class="points-row">
+      <label for="pts-${i}">${name}</label>
+      <input type="number" id="pts-${i}" min="0" max="999" placeholder="0" value="${val}">
+      ${rommeHand ? '<span class="doubled-hint">wird ×2</span>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+async function submitRound() {
+  if (modalWinner === null) {
+    alert('Bitte wähle den Gewinner der Runde aus.');
+    return;
+  }
+
+  const points = state.players.map((_, i) => {
+    if (i === modalWinner) return 0;
+    const input = document.getElementById('pts-' + i);
+    const val = parseInt(input?.value) || 0;
+    return rommeHand ? val * 2 : val;
+  });
+
+  if (editingRound !== null) {
+    // Korrektur einer bestehenden Runde
+    state.rounds[editingRound] = { points, winner: modalWinner, rommeHand };
+    closeModal();
+    renderGame();
+
+    if (state.gameId) {
+      setSyncStatus('busy', `Runde ${editingRound + 1} wird korrigiert…`);
+      try {
+        await sbFetch(
+          `rounds?game_id=eq.${state.gameId}&round_nr=eq.${editingRound + 1}`,
+          {
+            method: 'PATCH',
+            prefer: 'return=minimal',
+            body: JSON.stringify({ points, winner: modalWinner, romme_hand: rommeHand }),
+          }
+        );
+        setSyncStatus('ok', `Runde ${editingRound + 1} korrigiert`);
+      } catch (e) {
+        setSyncStatus('err', 'Fehler: ' + e.message);
+      }
+    }
+  } else {
+    // Neue Runde
+    state.rounds.push({ points, winner: modalWinner, rommeHand });
+    state.currentRound++;
+    closeModal();
+    renderGame();
+
+    if (state.gameId) {
+      setSyncStatus('busy', 'Runde wird gespeichert…');
+      try {
+        await sbFetch('rounds', {
+          method: 'POST',
+          body: JSON.stringify({
+            game_id: state.gameId,
+            round_nr: state.currentRound,
+            points,
+            winner: modalWinner,
+            romme_hand: rommeHand,
+          }),
+        });
+        setSyncStatus('ok', `Runde ${state.currentRound} gespeichert`);
+      } catch (e) {
+        setSyncStatus('err', 'Fehler: ' + e.message);
+      }
+    }
+  }
+}
+
+// ── RESULT ──
+async function showResult() {
+  const { players, teams, rounds } = state;
+  const totals = [0, 0, 0, 0];
+  rounds.forEach(r => r.points.forEach((p, i) => totals[i] += p));
+  document.getElementById('result-subtitle').textContent = `Endabrechnung nach ${state.totalRounds} Runden`;
+
+  const t1total = teams[0].reduce((s, i) => s + totals[i], 0);
+  const t2total = teams[1].reduce((s, i) => s + totals[i], 0);
+  const t1names = teams[0].map(i => players[i]).join(' & ');
+  const t2names = teams[1].map(i => players[i]).join(' & ');
+
+  document.getElementById('result-cards').innerHTML = `
+    <div class="result-team-card t1">
+      <div class="result-team-name">${t1names}</div>
+      <div class="result-team-pts">${t1total} Punkte</div>
+      <div class="result-team-euro">${fmtEuro(t1total)}</div>
+      <div class="result-team-players">${teams[0].map(i => `${players[i]}: ${totals[i]} Pkt.`).join(' · ')}</div>
+    </div>
+    <div class="result-team-card t2">
+      <div class="result-team-name">${t2names}</div>
+      <div class="result-team-pts">${t2total} Punkte</div>
+      <div class="result-team-euro">${fmtEuro(t2total)}</div>
+      <div class="result-team-players">${teams[1].map(i => `${players[i]}: ${totals[i]} Pkt.`).join(' · ')}</div>
+    </div>
+  `;
+
+  document.getElementById('kasse-msg').innerHTML = `
+    💰 <strong>${t1names}</strong> zahlt <strong>${fmtEuro(t1total)}</strong> in die Rommé-Kasse.<br>
+    💰 <strong>${t2names}</strong> zahlt <strong>${fmtEuro(t2total)}</strong> in die Rommé-Kasse.
+  `;
+
+  showScreen('result-screen');
+
+  // Spiel als beendet markieren
+  if (state.gameId) {
+    try {
+      await sbFetch(`games?id=eq.${state.gameId}`, {
+        method: 'PATCH',
+        prefer: 'return=minimal',
+        body: JSON.stringify({ status: 'finished', finished_at: new Date().toISOString() }),
+      });
+    } catch (e) {
+      console.warn('Konnte Spiel nicht als beendet markieren:', e);
+    }
+  }
+}
+
+let currentLigaFilter = 'Walter-Liga';
+
+function switchLigaTab(liga) {
+  currentLigaFilter = liga;
+  document.querySelectorAll('.liga-tab').forEach(t => {
+    t.classList.toggle('active', t.textContent === liga);
+  });
+  loadHistory();
+}
+
+// ── HISTORY ──
+async function loadHistory() {
+  const list = document.getElementById('history-list');
+  list.innerHTML = '<div class="loading-state">Lade Spiele…</div>';
+  const badge = document.getElementById('history-liga-badge');
+  if (badge) badge.textContent = currentLigaFilter;
+
+  try {
+    const games = await sbFetch(
+      `games?liga=eq.${encodeURIComponent(currentLigaFilter)}&order=created_at.desc&limit=50`,
+      { method: 'GET', prefer: '' }
+    );
+
+    if (!games || games.length === 0) {
+      document.getElementById('history-summary').innerHTML = '';
+      list.innerHTML = `<div class="empty-state">
+        <div class="empty-icon">🃏</div>
+        Noch keine Spiele gespeichert.
+      </div>`;
+      return;
+    }
+
+    // Runden für alle Spiele laden
+    const ids = games.map(g => g.id);
+    const rounds = await sbFetch(
+      `rounds?game_id=in.(${ids.join(',')})&order=round_nr.asc`,
+      { method: 'GET', prefer: '' }
+    );
+
+    // Gesamtsummen über alle Spiele berechnen (alle, nicht nur beendete)
+    const cfg = LIGA_CONFIG[currentLigaFilter];
+    let grandT1 = 0, grandT2 = 0;
+    games.forEach(game => {
+      const gameRounds = rounds.filter(r => r.game_id === game.id);
+      const totals = [0, 0, 0, 0];
+      gameRounds.forEach(r => r.points.forEach((p, i) => totals[i] += p));
+      const t1 = game.teams[0];
+      const t2 = game.teams[1];
+      grandT1 += Math.ceil(t1.reduce((s, i) => s + totals[i], 0) / 100);
+      grandT2 += Math.ceil(t2.reduce((s, i) => s + totals[i], 0) / 100);
+    });
+    const finishedCount = games.filter(g => g.status === 'finished').length;
+    const t1names = cfg.teams[0].map(i => cfg.players[i]).join(' & ');
+    const t2names = cfg.teams[1].map(i => cfg.players[i]).join(' & ');
+    const hinweis = games.length > finishedCount
+      ? ` (inkl. ${games.length - finishedCount} laufend${games.length - finishedCount !== 1 ? 'e' : 'es'})`
+      : '';
+    document.getElementById('history-summary').innerHTML = `
+      <div style="margin:12px 16px 0;background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:12px">
+          💰 Gesamtabrechnung · ${games.length} Spiel${games.length !== 1 ? 'e' : ''}${hinweis}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="background:var(--team1-light);border:1.5px solid var(--team1);border-radius:10px;padding:12px 14px">
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--team1);margin-bottom:4px">${t1names}</div>
+            <div style="font-size:1.8rem;font-weight:800;color:var(--text)">${grandT1.toLocaleString('de-DE')} €</div>
+          </div>
+          <div style="background:var(--team2-light);border:1.5px solid var(--team2);border-radius:10px;padding:12px 14px">
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--team2);margin-bottom:4px">${t2names}</div>
+            <div style="font-size:1.8rem;font-weight:800;color:var(--text)">${grandT2.toLocaleString('de-DE')} €</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:0.72rem;color:var(--text-muted);padding:6px 16px 0;text-align:center">── Einzelspiele ──</div>`;
+
+    list.innerHTML = games.map(game => {
+      const gameRounds = rounds.filter(r => r.game_id === game.id);
+      const totals = [0, 0, 0, 0];
+      gameRounds.forEach(r => r.points.forEach((p, i) => totals[i] += p));
+
+      const t1 = game.teams[0];
+      const t2 = game.teams[1];
+      const t1total = t1.reduce((s, i) => s + totals[i], 0);
+      const t2total = t2.reduce((s, i) => s + totals[i], 0);
+      const t1names = t1.map(i => game.players[i]).join(' & ');
+      const t2names = t2.map(i => game.players[i]).join(' & ');
+      const canWrite = isWritable(currentLigaFilter);
+
+      return `<div class="history-card" onclick="showDetail('${game.id}')">
+        <div class="history-card-header">
+          <div>
+            <div style="font-weight:700;font-size:0.95rem;margin-bottom:2px">${game.name || fmtDate(game.created_at)}</div>
+            <div class="history-date">${fmtDate(game.created_at)} · ${game.liga || ''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="history-status ${game.status === 'finished' ? 'status-finished' : 'status-running'}">
+              ${game.status === 'finished' ? 'Beendet' : 'Laufend'}
+            </span>
+            ${canWrite && game.status !== 'finished' ? `<button onclick="event.stopPropagation();resumeGame('${game.id}')" style="background:var(--team1);color:white;border:none;cursor:pointer;font-size:0.8rem;font-weight:700;padding:4px 10px;border-radius:20px" title="Spiel fortsetzen">▶ Fortsetzen</button>` : ''}
+            ${canWrite ? `<button onclick="event.stopPropagation();deleteGame('${game.id}','${(game.name || '').replace(/'/g, "\\'")}')" style="background:none;border:none;cursor:pointer;font-size:1.1rem;padding:2px 4px;color:var(--text-muted)" title="Spiel löschen">🗑️</button>` : ''}
+          </div>
+        </div>
+        <div class="history-teams">
+          <div class="history-team t1">
+            <div class="history-team-name">${t1names}</div>
+            <div class="history-team-score">${t1total} Pkt.</div>
+            <div class="history-team-euro">${fmtEuro(t1total)}</div>
+          </div>
+          <div class="history-team t2">
+            <div class="history-team-name">${t2names}</div>
+            <div class="history-team-score">${t2total} Pkt.</div>
+            <div class="history-team-euro">${fmtEuro(t2total)}</div>
+          </div>
+        </div>
+        <div class="history-rounds">${gameRounds.length} von ${game.total_rounds} Runden gespielt</div>
+      </div>`;
+    }).join('');
+
+  } catch (e) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">⚠️</div>
+      Fehler beim Laden: ${e.message}
+    </div>`;
+  }
+}
+
+async function resumeGame(gameId) {
+  try {
+    const [games, rounds] = await Promise.all([
+      sbFetch(`games?id=eq.${gameId}`, { method: 'GET', prefer: '' }),
+      sbFetch(`rounds?game_id=eq.${gameId}&order=round_nr.asc`, { method: 'GET', prefer: '' }),
+    ]);
+    const game = games[0];
+    state.gameId = game.id;
+    state.gameName = game.name;
+    state.liga = game.liga;
+    state.players = game.players;
+    state.teams = game.teams;
+    state.totalRounds = game.total_rounds;
+    state.rounds = rounds.map(r => ({ points: r.points, winner: r.winner, rommeHand: r.romme_hand }));
+    state.currentRound = rounds.length;
+    showScreen('game-screen');
+    renderGame();
+    setSyncStatus('ok', 'Spiel fortgesetzt · ID ' + game.id.slice(0, 8));
+  } catch (e) {
+    alert('Fehler beim Laden des Spiels: ' + e.message);
+  }
+}
+
+async function deleteGame(gameId, gameName) {
+  const label = gameName || 'dieses Spiel';
+  if (!confirm(`„${label}" wirklich löschen?\n\nDieser Vorgang kann nicht rückgängig gemacht werden.`)) return;
+
+  try {
+    await sbFetch(`rounds?game_id=eq.${gameId}`, { method: 'DELETE', prefer: 'return=minimal' });
+    await sbFetch(`games?id=eq.${gameId}`, { method: 'DELETE', prefer: 'return=minimal' });
+    loadHistory();
+  } catch (e) {
+    alert('Fehler beim Löschen: ' + e.message);
+  }
+}
+
+function newGame() {
+  showScreen('setup-screen');
+  initSetup();
+}
+
+function cancelGame() {
+  if (!confirm('Spiel wirklich abbrechen? Die bisher eingegebenen Punkte bleiben gespeichert, aber das Spiel wird nicht als beendet gewertet.')) return;
+  showScreen('setup-screen');
+  initSetup();
+}
+
+async function showDetail(gameId) {
+  showScreen('detail-screen');
+  document.getElementById('detail-title').textContent = '…';
+  document.getElementById('detail-body').innerHTML = '<div class="loading-state">Lade Details…</div>';
+
+  try {
+    const [games, rounds] = await Promise.all([
+      sbFetch(`games?id=eq.${gameId}`, { method: 'GET', prefer: '' }),
+      sbFetch(`rounds?game_id=eq.${gameId}&order=round_nr.asc`, { method: 'GET', prefer: '' }),
+    ]);
+
+    const game = games[0];
+    const players = game.players;
+    const teams = game.teams;
+    const t1 = teams[0];
+    const t2 = teams[1];
+    const order = [...t1, ...t2];
+    const colClass = order.map(i => t1.includes(i) ? 'col-t1' : 'col-t2');
+
+    // Totals
+    const totals = [0, 0, 0, 0];
+    rounds.forEach(r => r.points.forEach((p, i) => totals[i] += p));
+    const t1total = t1.reduce((s, i) => s + totals[i], 0);
+    const t2total = t2.reduce((s, i) => s + totals[i], 0);
+    const t1names = t1.map(i => players[i]).join(' & ');
+    const t2names = t2.map(i => players[i]).join(' & ');
+
+    // Header
+    document.getElementById('detail-title').textContent = game.name || fmtDate(game.created_at);
+    const statusEl = document.getElementById('detail-status');
+    statusEl.textContent = game.status === 'finished' ? 'Beendet' : 'Laufend';
+    statusEl.className = 'history-status ' + (game.status === 'finished' ? 'status-finished' : 'status-running');
+
+    // Team summary
+    const teamSummary = `
+      <div class="team-bar" style="padding:0">
+        <div class="team-card t1">
+          <div class="team-name">${t1names}</div>
+          <div class="team-pts">${t1total} Pkt.</div>
+          <div class="team-euro">${fmtEuro(t1total)}</div>
+        </div>
+        <div class="team-card t2">
+          <div class="team-name">${t2names}</div>
+          <div class="team-pts">${t2total} Pkt.</div>
+          <div class="team-euro">${fmtEuro(t2total)}</div>
+        </div>
+      </div>`;
+
+    // Score table
+    const headerRow = `<tr><th></th>${order.map((i, ci) =>
+      `<th class="${colClass[ci]}">${players[i]}</th>`
+    ).join('')}</tr>`;
+
+    const bodyRows = Array.from({ length: 12 }, (_, r) => {
+      const round = rounds[r];
+      let label = `R${r + 1}`;
+      if (round?.romme_hand) label += ` <span class="romme-badge">×2</span>`;
+      const cells = order.map((i, ci) => {
+        if (!round) return `<td style="color:var(--border)">—</td>`;
+        const isWinner = round.winner === i;
+        return `<td class="${isWinner ? 'winner-cell' : colClass[ci]}">${isWinner ? '0 ✓' : round.points[i]}</td>`;
+      }).join('');
+      return `<tr><td>${label}</td>${cells}</tr>`;
+    }).join('');
+
+    const footRow = `<tr><td>Σ</td>${order.map((i, ci) =>
+      `<td class="${colClass[ci]}">${totals[i]}</td>`
+    ).join('')}</tr>`;
+
+    const tableHtml = `
+      <div class="table-wrapper" style="padding:0">
+        <table>
+          <thead>${headerRow}</thead>
+          <tbody>${bodyRows}</tbody>
+          <tfoot>${footRow}</tfoot>
+        </table>
+      </div>`;
+
+    // Kasse-Hinweis nur bei beendeten Spielen
+    const kasseHtml = game.status === 'finished' ? `
+      <div class="kasse-msg">
+        💰 <strong>${t1names}</strong> zahlt <strong>${fmtEuro(t1total)}</strong> in die Rommé-Kasse.<br>
+        💰 <strong>${t2names}</strong> zahlt <strong>${fmtEuro(t2total)}</strong> in die Rommé-Kasse.
+      </div>` : '';
+
+    document.getElementById('detail-body').innerHTML =
+      `<div class="history-date" style="margin-top:4px">${fmtDate(game.created_at)}</div>`
+      + teamSummary + tableHtml + kasseHtml;
+
+  } catch (e) {
+    document.getElementById('detail-body').innerHTML =
+      `<div class="empty-state"><div class="empty-icon">⚠️</div>Fehler: ${e.message}</div>`;
+  }
+}
+</script>
+</body>
+</html>
