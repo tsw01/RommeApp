@@ -1,0 +1,19 @@
+# Rommé Punktezähler 
+
+## Projekt-Übersicht 
+Ein Tool zur Erfassung und Berechnung von Spielständen für Rommé mit festem Setup. 
+- Spieler: 4 Personen, je zwei Personen gehören zusammen, d.h. sie bilden ein Team
+- Struktur: 12 Spielrunden
+- Ziel: Erfassung der Punkte pro Person und Runde und die Gesamtsumme pro Person und Team
+- Die Punkte jeder Person und jedes Teams sollen nach jeder Runde addiert werden
+- Die Punkte sollen jederzeit sichtbar sein
+- Die Punkte eines Teams geteilt durch 100 sind jederzeit in Summe als Euro-Betrag darzustellen
+
+## Spielregeln (Logik) 
+- Ein Spieler pro Runde ist Gewinner. Seine Strafpunkte sind 0
+- Die anderen 3 Spieler erhalten Strafpunkte basierend auf ihren verbleibenden Handkarten. 
+- Besonderheit: Wenn ein Spieler "Rommé Hand" macht, zählen die Strafpunkte der Verlierer doppelt. 
+- Nach 12 Runden steht das Endergebnis fest. Die beiden Teams müssen den jeweiligen Euro-Betrag in die gemeinsame Rommé-Kasse zahlen
+
+## Tech-Stack & Architektur
+- Webanwendung
