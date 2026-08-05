@@ -387,6 +387,7 @@
     max-width: 480px; margin: 0 auto;
     padding: 32px 16px; text-align: center;
   }
+  #result-screen > div { max-width: 100%; }
 
   .trophy { font-size: 4rem; margin-bottom: 16px; }
   .result-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 8px; }
@@ -541,6 +542,29 @@
     #game-screen { max-width: 640px; margin: 0 auto; }
     .team-bar { gap: 12px; }
     .modal { border-radius: 16px; margin-bottom: 24px; }
+  }
+
+  @media (min-width: 768px) {
+    #setup-screen    { max-width: 720px; }
+    #game-screen     { max-width: 860px; }
+    #result-screen   { max-width: 720px; }
+    #history-screen  { max-width: 720px; }
+    #detail-screen   { max-width: 720px; }
+    #login-screen .login-box { max-width: 480px; padding: 48px 40px; }
+    .modal           { max-width: 640px; border-radius: 16px; margin-bottom: 32px; }
+    .fab-container   { max-width: 640px; }
+    .card            { padding: 28px 32px; }
+    .team-bar        { gap: 16px; }
+    .team-euro       { font-size: 1.9rem; }
+    .history-list    { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (min-width: 1024px) {
+    #setup-screen    { max-width: 860px; }
+    #history-screen  { max-width: 860px; }
+    #detail-screen   { max-width: 860px; }
+    #result-screen   { max-width: 860px; }
+    .history-list    { grid-template-columns: 1fr 1fr; }
   }
 
   /* ── LOGIN SCREEN ── */
@@ -808,7 +832,7 @@
 
 <!-- ── RESULT SCREEN ── -->
 <div id="result-screen" class="screen">
-  <div style="max-width:480px;margin:0 auto;padding:32px 16px;text-align:center">
+  <div style="padding:32px 16px;text-align:center">
     <div class="trophy">🏆</div>
     <h1 class="result-title">Spiel beendet!</h1>
     <p class="result-subtitle" id="result-subtitle">Endabrechnung nach 12 Runden</p>
