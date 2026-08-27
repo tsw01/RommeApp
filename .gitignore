@@ -1,0 +1,39 @@
+# Claude system dirs
+.claude/plugins/
+.claude/sessions/
+.claude/projects/
+.claude/backups/
+.claude/file-history/
+.claude/ide/
+.claude/skills/
+.claude/shell-snapshots/
+.claude/settings.json.backup.*
+
+# VS Code & other tools
+.vscode/extensions/
+.copilot/
+.cisco/
+.config/
+.local/
+.npm/
+.zsh_sessions/
+
+# Home directories (not tracked in dotfiles)
+Applications/
+Desktop/
+Dev/
+Documents/
+Downloads/
+Library/
+Movies/
+Music/
+Pictures/
+Public/
+OneDrive*/
+OneDrive - SAP SE
+Test\ Project*/
+countdown/
+eclipse/
+eclipse-workspace/
+timer.py
+.DS_Store
