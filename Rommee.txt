@@ -9,7 +9,6 @@ Ein Tool zur Erfassung und Berechnung von Spielständen für Rommé mit festem S
 - Die Punkte sollen jederzeit sichtbar sein
 - Die Punkte eines Teams geteilt durch 100 sind jederzeit in Summe als Euro-Betrag darzustellen
 
-
 ## Spielregeln (Logik) 
 - Ein Spieler pro Runde ist Gewinner. Seine Strafpunkte sind 0
 - Die anderen 3 Spieler erhalten Strafpunkte basierend auf ihren verbleibenden Handkarten. 
