@@ -11,12 +11,16 @@
 
 # VS Code & other tools
 .vscode/extensions/
+.vscode-shared/
 .copilot/
 .cisco/
 .config/
 .local/
 .npm/
 .zsh_sessions/
+.zsh_history
+.idlerc/
+.claude/.last-cleanup
 
 # Home directories (not tracked in dotfiles)
 Applications/
